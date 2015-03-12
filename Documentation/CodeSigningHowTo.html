@@ -74,7 +74,7 @@
 		<li>certreq -new &nbsp;CodeSigningKeyRequest.inf CodeSigningKeyRequest.req</li>
 		<li>certreq -submit &nbsp;CodeSigningKeyRequest.re</li>
 		<p>It should pop up a dialog to select a certificate authority. Select the second.</p>
-		<p><img src="images/image00.png"></p>
+		<p><img src="images/CertSigning_image00.png"></p>
 		<p>A save dialog will appear. Save the file as a .cer in the same location as the .req file.</p>
 		<li>certreq -accept CodeSigningKeyRequest.cer</span></li>
 		<p>This will import the certificate into your personal certificate store with the private key.</p>
@@ -88,7 +88,7 @@
 		<li>Copy the Tools folder from \\phx-fs01\Archon\Artifacts\Tools to a local folder</li>
 		<li>Run ExportCert.exe</li>
 		<li>Double click on the certificate from the certificate store</li>
-		<p><img src="images/image03.png"></p>
+		<p><img src="images/CertSigning_image03.png"></p>
 		<p>Note: only certificates that are valid for code signing with the enhanced key usage extensions defined in the inf file above will be listed.</p>
 		<li>Save the file (to an snk file)</li>
 		<li>Add the file to source control</li>
@@ -102,7 +102,7 @@
 		<li>Add Existing File (Note: doing this from any other location in the project in the root will result in the snk file not showing up in the drop down for choosing the snk file. Once the snk file is chosen you can move it after).</li>
 		<li>Select the exported strong name key file</li>
 		<li>Select &ldquo;Add As Link&rdquo;:</li>
-		<p><img src="images/image01.png"></p>
+		<p><img src="images/CertSigning_image01.png"></p>
 		<li>Right Click on the Project</li>
 		<li>Select Properties</li>
 		<li>Select the Signing tab</li>
@@ -117,7 +117,7 @@
 	<ol start="1">
 		<li>Run certmgr.msc from the command line</li>
 		<li>Find the certificate in your certificate store. &nbsp;It ought to appear under Personal\Certificate with your user name and the same CA issuer you selected above. It will also specify an &ldquo;Intended Purposes&rdquo; of &ldquo;Code Signing&rdquo;.</li>
-		<p><img src="images/image05.png"></p>
+		<p><img src="images/CertSigning_image05.png"></p>
 		<li>Open the certificate (double click or right click and open)</li>
 		<li>Details Tab</li>
 		<li>Copy To File button</li>
@@ -126,9 +126,9 @@
 			<li>Yes, Export the private key, Next</li>
 			<li>Accept default, Next</li>
 			<li>Use Group or User Names, Add</li>
-			<p><img src="images/image04.png"></p>
+			<p><img src="images/CertSigning_image04.png"></p>
 			<li>Select Advanced</li>
-			<p><img src="images/image02.png"></p>
+			<p><img src="images/CertSigning_image02.png"></p>
 			<li>Select Find Now</li>
 			<li>Find &ldquo;Domain Users&rdquo; in the Search Results and double click on it.</li>
 			<li>Select OK</li>
@@ -147,7 +147,7 @@
 		<li>Add Existing File (Note: doing this from any other location in the project in the root will result in the snk file not showing up in the drop down for choosing the snk file. Once the snk file is chosen you can move it after).</li>
 		<li>Select the exported strong name key file</li>
 		<li>Select &ldquo;Add As Link&rdquo;:</li>
-		<p><img src="images/image01.png"></p>
+		<p><img src="images/CertSigning_image01.png"></p>
 		<li>Right Click on the Project</li>
 		<li>Select Properties</li>
 		<li>Select the Signing tab</li>
