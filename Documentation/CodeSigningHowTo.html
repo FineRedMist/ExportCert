@@ -1,167 +1,156 @@
-<html>
+<h2>Motivation</h2>
+We have a number of tools we distribute internally that we want to ensure are signed (particularly ClickOnce applications).
 
-<head>
-	<title>Code Signing How To</title>
-	<meta content="text/html; charset=UTF-8" http-equiv="content-type">
-</head>
+The goals were:
+<ol start="1">
+	<li>Anyone on the team could build the tools (including ClickOnce tools) and publish them.</li>
+	<li>No one on the team has to go through manual steps: they ought to be able to sync and build.</li>
+	<li>No dialog popups during the build (such as passwords).</li>
+	<li>No trust issues when using the tools--Certificates are trusted.</li>
+</ol>
+<!--more-->
 
-<body class="c6">
-	<h1>Code Signing How To</h1>
+Publishing ClickOnce applications requires strong name signing all assemblies as well as using a certificate to sign the ClickOnce manifest. We needed to get a certificate with both public and private keys to be able to do so.
 
-	<h2>Motivation</h2>
-	
-	<p>We have a number of tools we distribute internally that we want to ensure are signed (particularly ClickOnce applications).</p>
+To enable anyone on the team to be able to sign the application I wanted to be able to submit our certificate (with both public and private key) into Perforce so it is synced with the tools. This would solve 1 &amp; 2.
 
-	<p>The goals were:</p>
-	<ol start="1">
-		<li>Anyone on the team could build the tools (including ClickOnce tools) and publish them.</li>
-		<li>No one on the team has to go through manual steps: they ought to be able to sync and build.</li>
-		<li>No dialog popups during the build (such as passwords).</li>
-		<li>No trust issues when using the tools--Certificates are trusted.</li>
-	</ol>
-	
-	<p>Publishing ClickOnce applications requires strong name signing all assemblies as well as using a certificate to sign the ClickOnce manifest. We needed to get a certificate with both public and private keys to be able to do so.</p>
+Submitting a certificate to Perforce would be a security issue if the certificate is issued by an external authority trusted by Windows users. To facilitate this we set up our own Certificate Server. Certificate Server is a Certificate Authority that can be joined to the domain so all domain users would trust certificates issued by this authority, yet not trusted by any normal Windows user. We can then issue code signing certificates at will. This solves 4.
 
-	<p>To enable anyone on the team to be able to sign the application I wanted to be able to submit our certificate (with both public and private key) into Perforce so it is synced with the tools. This would solve 1 &amp; 2.</p>
+These certificates also allow using Group Policy Objects to control access to the certificate, removing the need for a password. This solves 3.
+<h2>Environment</h2>
+We are running Windows Server 2012 R2 for our domain servers and Windows 8.1 for client machines.
+<h2>Set Up Certificate Server</h2>
+On the Domain Controller:
+<ol start="1">
+	<li>Go to Server Manager</li>
+	<li>Manage</li>
+	<li>Add Roles and Features</li>
+	<li>Role-based or feature-based installation</li>
+	<li>Select the current server</li>
+	<li>Active Directory Certificate Services, including:
+<ul>
+	<li>Certificate Authority</li>
+	<li>Certificate Enrollment Policy Web Service</li>
+	<li>Certificate Enrollment Web Service</li>
+	<li>Certificate Authority Web Enrollment</li>
+	<li>Note that additional requirements will automatically be included, such as IIS.</li>
+</ul>
+</li>
+	<li>Finish the installation</li>
+</ol>
+After installation and possibly reboot there will be a task to configure the Certificate Authority. Configure the server as an Enterprise CA. This will simplify requesting new certificates dramatically and enable functionality not available in the non-Enterprise scenario.
 
-	<p>Submitting a certificate to Perforce would be a security issue if the certificate is issued by an external authority trusted by Windows users. To facilitate this we set up our own Certificate Server. Certificate Server is a Certificate Authority that can be joined to the domain so all domain users would trust certificates issued by this authority, yet not trusted by any normal Windows user. We can then issue code signing certificates at will. This solves 4.</p>
+Now let’s add the code signing template to the Certificate Authority.
+<ol start="1">
+	<li>Start CertMgr.msc</li>
+	<li>Click on “Certificate Templates”</li>
+	<li>Action-&gt;New-&gt;Certificate Template to Issue</li>
+	<li>Select “Code Signing”</li>
+	<li>OK</li>
+</ol>
+<h2>Generate the Certificate into Your Personal Certificate Store</h2>
+<ol start="1">
+	<li>Download <a title="CodeSigningKeyRequest.inf on GitHub" href="https://github.com/FineRedMist/ExportCert/blob/master/ExportCert/CodeSigningKeyRequest.inf" target="_blank">CodeSigningKeyRequest.inf on GitHub</a> locally</li>
+	<li>Start cmd.exe</li>
+	<li>Change to the download directory</li>
+	<li>certreq -new  CodeSigningKeyRequest.inf CodeSigningKeyRequest.req</li>
+	<li>certreq -submit  CodeSigningKeyRequest.req</li>
+</ol>
+<p style="padding-left: 30px;">It should pop up a dialog to select a certificate authority. Select the second.</p>
+<img class="aligncenter size-full" src="images/CertSigning_image00.png" alt="CertSigning_image00" />
+<p style="padding-left: 30px;">A save dialog will appear. Save the file as a .cer in the same location as the .req file.</p>
 
-	<p>These certificates also allow using Group Policy Objects to control access to the certificate, removing the need for a password. This solves 3.</p>
+<ol start="6">
+	<li>certreq -accept CodeSigningKeyRequest.cer</li>
+</ol>
+This will import the certificate into your personal certificate store with the private key.
+<h2>Signing Assemblies</h2>
+<h3>Export the Certificate to a Strong Name Key (SNK) File</h3>
+<ol start="1">
+	<li>Run ExportCert.exe (available from: <a href="https://github.com/FineRedMist/ExportCert/" title="ExportCert on GitHub" target="_blank">ExportCert on GitHub</a>)</li>
+	<li>Double click on the certificate from the certificate store</li>
+</ol>
+<img class="aligncenter size-full" src="images/CertSigning_image03.png" alt="CertSigning_image03" />
+<p style="padding-left: 30px;">Note: only certificates that are valid for code signing with the enhanced key usage extensions defined in the inf file above will be listed.</p>
 
-	<h2>Environment</h2>
-
-	<p>We are running Windows Server 2012 R2 for our domain servers and Windows 8.1 for client machines.</p>
-
-	<h2>Set Up Certificate Server</h2>
-
-	<p>On the Domain Controller:</p>
-	<ol start="1">
-		<li>Go to Server Manager</li>
-		<li>Manage</li>
-		<li>Add Roles and Features</li>
-		<li>Role-based or feature-based installation</li>
-		<li>Select the current server</li>
-		<li>Active Directory Certificate Services, including:</li>
-		<ul>
-			<li>Certificate Authority</li>
-			<li>Certificate Enrollment Policy Web Service</li>
-			<li>Certificate Enrollment Web Service</li>
-			<li>Certificate Authority Web Enrollment</li>
-			<li>Note that additional requirements will automatically be included, such as IIS.</li>
-		</ul>
-		<li>Finish the installation</li>
-	</ol>
-
-	<p>After installation and possibly reboot there will be a task to configure the Certificate Authority. Configure the server as an Enterprise CA. This will simplify requesting new certificates dramatically and enable functionality not available in the non-Enterprise scenario.</p>
-
-	<p>Now let&rsquo;s add the code signing template to the Certificate Authority.</p>
-	<ol start="1">
-		<li>Start CertMgr.msc</li>
-		<li>Click on &ldquo;Certificate Templates&rdquo;</li>
-		<li>Action-&gt;New-&gt;Certificate Template to Issue</li>
-		<li>Select &ldquo;Code Signing&rdquo;</li>
-		<li>OK</li>
-	</ol>
-
-	<h2>Generate the Certificate into Your Personal Certificate Store</h2>
-
-	<p>Included in this project is the CodeSigningKeyRequest.inf file.</p>
-
-	<ol start="1">
-		<li>Download it locally</li>
-		<li>Start cmd.exe</li>
-		<li>Change to the download directory</li>
-		<li>certreq -new &nbsp;CodeSigningKeyRequest.inf CodeSigningKeyRequest.req</li>
-		<li>certreq -submit &nbsp;CodeSigningKeyRequest.re</li>
-		<p>It should pop up a dialog to select a certificate authority. Select the second.</p>
-		<p><img src="images/CertSigning_image00.png"></p>
-		<p>A save dialog will appear. Save the file as a .cer in the same location as the .req file.</p>
-		<li>certreq -accept CodeSigningKeyRequest.cer</span></li>
-		<p>This will import the certificate into your personal certificate store with the private key.</p>
-	</ol>
-
-	<h2>Signing Assemblies</h2>
-
-	<h3>Export the Certificate to a Strong Name Key (SNK) File</h3>
-
-	<ol start="1">
-		<li>Copy the Tools folder from \\phx-fs01\Archon\Artifacts\Tools to a local folder</li>
-		<li>Run ExportCert.exe</li>
-		<li>Double click on the certificate from the certificate store</li>
-		<p><img src="images/CertSigning_image03.png"></p>
-		<p>Note: only certificates that are valid for code signing with the enhanced key usage extensions defined in the inf file above will be listed.</p>
-		<li>Save the file (to an snk file)</li>
-		<li>Add the file to source control</li>
-	</ol>
-
-	<h3>Configure the Project for Signing</h3>
-
-	<ol start="1">
-		<li>Open the solution.</li>
-		<li>Right click on the project</li>
-		<li>Add Existing File (Note: doing this from any other location in the project in the root will result in the snk file not showing up in the drop down for choosing the snk file. Once the snk file is chosen you can move it after).</li>
-		<li>Select the exported strong name key file</li>
-		<li>Select &ldquo;Add As Link&rdquo;:</li>
-		<p><img src="images/CertSigning_image01.png"></p>
-		<li>Right Click on the Project</li>
-		<li>Select Properties</li>
-		<li>Select the Signing tab</li>
-		<li>Enable &ldquo;Sign the Assembly&rdquo;</li>
-		<li>Select the snk file in the &ldquo;Choose a strong name key file&rdquo;</li>
-	</ol>
-
-	<h2>Signing Click Once Assemblies</h2>
-
-	<h3>Export the Certificate</h3>
-
-	<ol start="1">
-		<li>Run certmgr.msc from the command line</li>
-		<li>Find the certificate in your certificate store. &nbsp;It ought to appear under Personal\Certificate with your user name and the same CA issuer you selected above. It will also specify an &ldquo;Intended Purposes&rdquo; of &ldquo;Code Signing&rdquo;.</li>
-		<p><img src="images/CertSigning_image05.png"></p>
-		<li>Open the certificate (double click or right click and open)</li>
-		<li>Details Tab</li>
-		<li>Copy To File button</li>
-		<li>In the wizard select:</li>
-		<ul>
-			<li>Yes, Export the private key, Next</li>
-			<li>Accept default, Next</li>
-			<li>Use Group or User Names, Add</li>
-			<p><img src="images/CertSigning_image04.png"></p>
-			<li>Select Advanced</li>
-			<p><img src="images/CertSigning_image02.png"></p>
-			<li>Select Find Now</li>
-			<li>Find &ldquo;Domain Users&rdquo; in the Search Results and double click on it.</li>
-			<li>Select OK</li>
-			<li>Remove yourself from the user list.</li>
-			<li>Next</li>
-			<li>Save the pfx file out</li>
-		</ul>
-		<li>Add the pfx file that was saved to Perforce</li>
-	</ol>
-
-	<h3>Signing Assemblies with the Certificate</h3>
-
-	<ol start="1">
-		<li>Open the solution.</li>
-		<li>Right click on the project</li>
-		<li>Add Existing File (Note: doing this from any other location in the project in the root will result in the snk file not showing up in the drop down for choosing the snk file. Once the snk file is chosen you can move it after).</li>
-		<li>Select the exported strong name key file</li>
-		<li>Select &ldquo;Add As Link&rdquo;:</li>
-		<p><img src="images/CertSigning_image01.png"></p>
-		<li>Right Click on the Project</li>
-		<li>Select Properties</li>
-		<li>Select the Signing tab</li>
-		<li>Enable &ldquo;Sign the ClickOnce manifests&rdquo;</li>
-		<li>Choose &ldquo;Select from File&rdquo;</li>
-		<li>Select the pfx file. It should load automatically without requiring a password.</li>
-	</ol>
-
-	<h2>References</h2>
-
-	<ul>
-		<li><a href="https://www.google.com/url?q=https%3A%2F%2Ftechnet.microsoft.com%2Fen-us%2Flibrary%2Fdn296456.aspx&amp;sa=D&amp;sntz=1&amp;usg=AFQjCNEHmqE8n8Py6OeEf4kJMBuzA8FnPQ">CertReq.exe usage on TechNet</a> - Includes the definition of the inf file format</li>
-		<li><a href="http://www.google.com/url?q=http%3A%2F%2Foid-info.com%2Fget%2F1.3.6.1.5.5.7.3.3&amp;sa=D&amp;sntz=1&amp;usg=AFQjCNFmST97PZipkTtFNZQeLS9EYKygSg">Extended Attribute OID for Code Signing</a></li>
-		<li><a class="c9" href="http://www.google.com/url?q=http%3A%2F%2Fstackoverflow.com%2Fquestions%2F8174229%2Fhow-to-create-a-snk-from-pfx-cer&amp;sa=D&amp;sntz=1&amp;usg=AFQjCNHPhFibDWzNTIR8w4yS6kRLbhI5jw">How to Convert a PFX file to SNK</a> - Includes a code sample to export the private key from the pfx file to the snk file. This has been implemented in the ExportCert.exe tool (but to do so from the user&rsquo;s certificate store).</li>
-	</ul>
-</body>
-</html>
+<ol start="4">
+	<li>Save the file (to an snk file)</li>
+	<li>Add the file to source control</li>
+</ol>
+<h3>Configure the Project for Signing</h3>
+<ol start="1">
+	<li>Open the solution.</li>
+	<li>Right click on the project</li>
+	<li>Add Existing File (Note: doing this from any other location in the project in the root will result in the snk file not showing up in the drop down for choosing the snk file. Once the snk file is chosen you can move it after).</li>
+	<li>Select the exported strong name key file</li>
+	<li>Select “Add As Link”:</li>
+</ol>
+<a href="images/CertSigning_image01.png"><img class="aligncenter size-full" src="images/CertSigning_image01.png" alt="CertSigning_image01" /></a>
+<ol start="6">
+	<li>Right Click on the Project</li>
+	<li>Select Properties</li>
+	<li>Select the Signing tab</li>
+	<li>Enable “Sign the Assembly”</li>
+	<li>Select the snk file in the “Choose a strong name key file”</li>
+</ol>
+<h2>Signing Click Once Assemblies</h2>
+<h3>Export the Certificate</h3>
+<ol start="1">
+	<li>Run certmgr.msc from the command line</li>
+	<li>Find the certificate in your certificate store.  It ought to appear under Personal\Certificate with your user name and the same CA issuer you selected above. It will also specify an “Intended Purposes” of “Code Signing”.</li>
+</ol>
+<img class="aligncenter size-full" src="images/CertSigning_image05.png" alt="CertSigning_image05" />
+<ol start="3">
+	<li>Open the certificate (double click or right click and open)</li>
+	<li>Details Tab</li>
+	<li>Copy To File button</li>
+	<li>In the wizard select:
+<ul>
+	<li>Yes, Export the private key, Next</li>
+	<li>Accept default, Next</li>
+	<li>Use Group or User Names, Add</li>
+</ul>
+</li>
+</ol>
+<img class="aligncenter size-full" src="images/CertSigning_image04.png" alt="CertSigning_image04" />
+<ol>
+<ul>
+	<li>Select Advanced</li>
+</ul>
+</ol>
+<img class="aligncenter size-full" src="images/CertSigning_image02.png" alt="CertSigning_image02" />
+<ol start="7">
+<ul>
+	<li>Select Find Now</li>
+	<li>Find “Domain Users” in the Search Results and double click on it.</li>
+	<li>Select OK</li>
+	<li>Remove yourself from the user list.</li>
+	<li>Next</li>
+	<li>Save the pfx file out</li>
+</ul>
+	<li>Add the pfx file that was saved to Perforce</li>
+</ol>
+<h3>Signing Assemblies with the Certificate</h3>
+<ol start="1">
+	<li>Open the solution.</li>
+	<li>Right click on the project</li>
+	<li>Add Existing File (Note: doing this from any other location in the project in the root will result in the snk file not showing up in the drop down for choosing the snk file. Once the snk file is chosen you can move it after).</li>
+	<li>Select the exported strong name key file</li>
+	<li>Select “Add As Link”:</li>
+</ol>
+<img class="aligncenter size-full" src="images/CertSigning_image01.png" alt="CertSigning_image01" />
+<ol start="6">
+	<li>Right Click on the Project</li>
+	<li>Select Properties</li>
+	<li>Select the Signing tab</li>
+	<li>Enable “Sign the ClickOnce manifests”</li>
+	<li>Choose “Select from File”</li>
+	<li>Select the pfx file. It should load automatically without requiring a password.</li>
+</ol>
+<h2>References</h2>
+<ul>
+	<li><a href="https://www.google.com/url?q=https%3A%2F%2Ftechnet.microsoft.com%2Fen-us%2Flibrary%2Fdn296456.aspx&amp;sa=D&amp;sntz=1&amp;usg=AFQjCNEHmqE8n8Py6OeEf4kJMBuzA8FnPQ">CertReq.exe usage on TechNet</a> - Includes the definition of the inf file format</li>
+	<li><a href="http://www.google.com/url?q=http%3A%2F%2Foid-info.com%2Fget%2F1.3.6.1.5.5.7.3.3&amp;sa=D&amp;sntz=1&amp;usg=AFQjCNFmST97PZipkTtFNZQeLS9EYKygSg">Extended Attribute OID for Code Signing</a></li>
+	<li><a class="c9" href="http://www.google.com/url?q=http%3A%2F%2Fstackoverflow.com%2Fquestions%2F8174229%2Fhow-to-create-a-snk-from-pfx-cer&amp;sa=D&amp;sntz=1&amp;usg=AFQjCNHPhFibDWzNTIR8w4yS6kRLbhI5jw">How to Convert a PFX file to SNK</a> - Includes a code sample to export the private key from the pfx file to the snk file. This has been implemented in the ExportCert.exe tool (but to do so from the user’s certificate store).</li>
+</ul>
+&nbsp;
